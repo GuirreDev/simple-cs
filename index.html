@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple CS - Por Aguirre</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Courier New', Courier, monospace; color: white; user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { background: #222; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        
+        /* UI OVERLAYS */
+        .ui-layer { position: absolute; pointer-events: none; width: 100%; height: 100%; top: 0; left: 0; }
+        
+        /* HUD SUPERIOR */
+        #top-hud { display: flex; justify-content: space-between; padding: 20px; font-weight: bold; font-size: 18px; text-shadow: 1px 1px 0 #000; }
+        .team-hud { display: flex; gap: 10px; }
+        .alive { color: #0f0; } .dead { color: #f00; text-decoration: line-through; }
+        #timer-box { background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 5px; border: 1px solid #555; }
+        #score-board { font-size: 24px; color: gold; }
+
+        /* HUD INFERIOR */
+        #bottom-hud { position: absolute; bottom: 20px; left: 20px; display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid #444; }
+        #weapon-icon { width: 50px; height: 30px; background: #555; display: flex; justify-content: center; align-items: center; font-size: 12px; }
+        
+        /* MENUS */
+        #main-menu, #game-over-screen { position: absolute; background: rgba(0,0,0,0.9); width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; z-index: 10; }
+        h1 { font-size: 60px; color: #ff9900; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 5px; }
+        .btn { background: #333; color: white; border: 1px solid #ff9900; padding: 15px 40px; font-size: 20px; cursor: pointer; margin: 10px; transition: 0.2s; font-family: inherit; }
+        .btn:hover { background: #ff9900; color: black; }
+        .hidden { display: none !important; }
+        #credits { margin-top: 50px; font-size: 14px; color: #888; }
+        
+        /* Controls Info */
+        .controls-info { text-align: left; margin-bottom: 30px; line-height: 1.6; color: #ccc; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu">
+        <h1>Simple CS</h1>
+        <div class="controls-info">
+            <strong>🎮 Controles:</strong><br>
+            [W, A, S, D] - Moverse<br>
+            [Mouse] - Apuntar (Linterna) y Disparar<br>
+            [1, 2, 3] - Cambiar Arma (Subfusil, Pistola, Cuchillo)<br>
+            <small>Nota: Subfusil desbloqueado en Ronda 4</small>
+        </div>
+        <button class="btn" onclick="startGame()">INICIAR PARTIDA</button>
+        <div id="credits">Juego creado por Aguirre</div>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+        <h1 id="winner-text">EQUIPO GANA</h1>
+        <button class="btn" onclick="location.reload()">VOLVER AL MENÚ</button>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="hud" class="ui-layer hidden">
+            <div id="top-hud">
+                <div class="team-hud" id="my-team-list">
+                    </div>
+                
+                <div style="text-align:center">
+                    <div id="score-board">AZUL 0 - 0 ROJO</div>
+                    <div id="timer-box">02:30</div>
+                </div>
+
+                <div class="team-hud" id="enemy-team-list">
+                    </div>
+            </div>
+
+            <div id="bottom-hud">
+                <div id="weapon-icon">GLOCK</div>
+                <div id="ammo-info">12 / ∞</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN E INICIALIZACIÓN ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Ajustar canvas
+        canvas.width = 1024;
+        canvas.height = 768;
+
+        const GAME_CONFIG = {
+            maxRounds: 7, // Puntos para ganar
+            roundTime: 150, // 2:30 en segundos
+            flashlightAngle: Math.PI / 4, // 45 grados de cono
+            flashlightDist: 350
+        };
+
+        let gameState = {
+            active: false,
+            round: 1,
+            score: { blue: 0, red: 0 }, // Azul = Jugador, Rojo = Enemigo
+            timer: GAME_CONFIG.roundTime,
+            entities: [],
+            bullets: [],
+            walls: [],
+            localPlayer: null
+        };
+
+        // --- CLASES ---
+        
+        class Vector {
+            constructor(x, y) { this.x = x; this.y = y; }
+        }
+
+        class Weapon {
+            constructor(name, type, damage, fireRate, ammo, unlockRound) {
+                this.name = name;
+                this.type = type; // 'auto', 'semi', 'melee'
+                this.damage = damage;
+                this.fireRate = fireRate; // ms entre disparos
+                this.maxAmmo = ammo;
+                this.currentAmmo = ammo;
+                this.unlockRound = unlockRound;
+                this.lastShot = 0;
+            }
+        }
+
+        class Entity {
+            constructor(x, y, team, isBot = true) {
+                this.x = x;
+                this.y = y;
+                this.radius = 12;
+                this.team = team; // 'blue' or 'red'
+                this.isBot = isBot;
+                this.alive = true;
+                this.hp = 100;
+                this.angle = 0;
+                this.speed = 2.5;
+                
+                // Armas
+                this.weapons = [
+                    new Weapon('SMG', 'auto', 12, 100, 30, 4),
+                    new Weapon('Glock', 'semi', 18, 250, 12, 1),
+                    new Weapon('Cuchillo', 'melee', 40, 500, null, 1)
+                ];
+                this.currentWeaponIdx = 1; // Empieza con Glock
+            }
+
+            update(dt) {
+                if (!this.alive) return;
+                
+                // IA BÁSICA (Simulada)
+                if (this.isBot) {
+                    this.runBotLogic();
+                }
+            }
+
+            runBotLogic() {
+                // Lógica muy simple: Moverse aleatoriamente o hacia enemigos
+                // En una implementación real con PeerJS, esto se sincronizaría
+                
+                // 1. Buscar objetivo vivo más cercano
+                let target = gameState.entities.find(e => e.team !== this.team && e.alive);
+                if (target) {
+                    // Calcular ángulo hacia objetivo
+                    let dx = target.x - this.x;
+                    let dy = target.y - this.y;
+                    this.angle = Math.atan2(dy, dx);
+                    
+                    // Disparar si está cerca y en línea de visión (Simulado)
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 300 && Math.random() < 0.02) {
+                        this.shoot();
+                    }
+                    
+                    // Moverse
+                    if (dist > 150) {
+                        this.x += Math.cos(this.angle) * (this.speed * 0.5);
+                        this.y += Math.sin(this.angle) * (this.speed * 0.5);
+                    }
+                }
+            }
+
+            shoot() {
+                if (!this.alive) return;
+                let weapon = this.weapons[this.currentWeaponIdx];
+                let now = Date.now();
+                
+                if (now - weapon.lastShot < weapon.fireRate) return;
+                if (weapon.maxAmmo !== null && weapon.currentAmmo <= 0) return; // Recarga simplificada: no dispara
+
+                weapon.lastShot = now;
+                if (weapon.maxAmmo !== null) weapon.currentAmmo--;
+
+                // Crear bala
+                if (weapon.type !== 'melee') {
+                    gameState.bullets.push({
+                        x: this.x, y: this.y,
+                        vx: Math.cos(this.angle) * 10,
+                        vy: Math.sin(this.angle) * 10,
+                        owner: this,
+                        dmg: weapon.damage
+                    });
+                    // Efecto sonido simple
+                    playSound(weapon.type === 'auto' ? 'pew' : 'bang');
+                } else {
+                    // Lógica melee
+                    // Verificar distancia con enemigos y aplicar daño
+                }
+                updateHUD();
+            }
+        }
+
+        // --- SISTEMA DE VISIÓN Y RAYCASTING (Simplificado) ---
+        function drawVisionCone(player) {
+            // 1. Llenar todo de oscuridad
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.95)'; // Casi negro total
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Usar operación de composición para "cortar" la oscuridad
+            ctx.globalCompositeOperation = 'destination-out';
+
+            // Dibujar el cono de visión
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            
+            // Simulación de Raycasting:
+            // En lugar de un arco perfecto, lanzamos líneas y si chocan, detenemos el dibujo.
+            // Para este prototipo, usaremos un arco simple + comprobación de paredes básica
+            ctx.arc(player.x, player.y, GAME_CONFIG.flashlightDist, player.angle - GAME_CONFIG.flashlightAngle/2, player.angle + GAME_CONFIG.flashlightAngle/2);
+            ctx.lineTo(player.x, player.y);
+            ctx.fillStyle = 'white'; // Esto "borra" la oscuridad
+            ctx.fill();
+
+            // Restaurar modo de dibujo normal
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Dibujar el "Brillo extra" (+0.2 luminosidad simulada)
+            let grad = ctx.createRadialGradient(player.x, player.y, 50, player.x, player.y, GAME_CONFIG.flashlightDist);
+            grad.addColorStop(0, 'rgba(255, 255, 200, 0.1)');
+            grad.addColorStop(1, 'rgba(255, 255, 200, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, GAME_CONFIG.flashlightDist, player.angle - GAME_CONFIG.flashlightAngle/2, player.angle + GAME_CONFIG.flashlightAngle/2);
+            ctx.lineTo(player.x, player.y);
+            ctx.fill();
+        }
+
+        // --- CORE DEL JUEGO ---
+
+        function initMap() {
+            // Mapa simple: Bordes y algunas cajas
+            gameState.walls = [
+                {x: 100, y: 100, w: 50, h: 200},
+                {x: 400, y: 300, w: 200, h: 50},
+                {x: 700, y: 100, w: 50, h: 300},
+                {x: 200, y: 500, w: 600, h: 20},
+                {x: 500, y: 500, w: 20, h: 100},
+            ];
+        }
+
+        function resetRound() {
+            gameState.entities = [];
+            gameState.bullets = [];
+            gameState.timer = GAME_CONFIG.roundTime;
+
+            // Spawn Player Team (Blue)
+            gameState.localPlayer = new Entity(100, 380, 'blue', false);
+            gameState.entities.push(gameState.localPlayer);
+            gameState.entities.push(new Entity(80, 350, 'blue', true)); // Bot 1
+            gameState.entities.push(new Entity(80, 410, 'blue', true)); // Bot 2
+
+            // Spawn Enemy Team (Red)
+            gameState.entities.push(new Entity(900, 380, 'red', true));
+            gameState.entities.push(new Entity(920, 350, 'red', true));
+            gameState.entities.push(new Entity(920, 410, 'red', true));
+            
+            updateHUD();
+        }
+
+        function startGame() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            gameState.active = true;
+            gameState.score = { blue: 0, red: 0 };
+            gameState.round = 1;
+            initMap();
+            resetRound();
+            loop();
+            startTimer();
+        }
+
+        function checkRoundEnd() {
+            let blueAlive = gameState.entities.filter(e => e.team === 'blue' && e.alive).length;
+            let redAlive = gameState.entities.filter(e => e.team === 'red' && e.alive).length;
+
+            if (blueAlive === 0 || redAlive === 0 || gameState.timer <= 0) {
+                // Lógica ganar ronda
+                if (redAlive === 0) gameState.score.blue++;
+                else gameState.score.red++; // Si tiempo acaba o blue muere, gana red (simple)
+
+                if (gameState.score.blue >= GAME_CONFIG.maxRounds || gameState.score.red >= GAME_CONFIG.maxRounds) {
+                    endGame(gameState.score.blue >= GAME_CONFIG.maxRounds ? 'TU EQUIPO' : 'ENEMIGOS');
+                } else {
+                    gameState.round++;
+                    // Pequeña pausa y reinicio
+                    setTimeout(resetRound, 2000); 
+                }
+            }
+        }
+
+        function endGame(winner) {
+            gameState.active = false;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            document.getElementById('winner-text').innerText = winner + " GANA LA PARTIDA";
+        }
+
+        // --- INPUTS ---
+        const keys = {};
+        const mouse = { x: 0, y: 0, down: false };
+
+        window.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+            // Cambio armas
+            if (!gameState.localPlayer) return;
+            if (e.key === '1' && gameState.round >= 4) gameState.localPlayer.currentWeaponIdx = 0;
+            if (e.key === '2') gameState.localPlayer.currentWeaponIdx = 1;
+            if (e.key === '3') gameState.localPlayer.currentWeaponIdx = 2;
+            updateHUD();
+        });
+        window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+        window.addEventListener('mousedown', () => mouse.down = true);
+        window.addEventListener('mouseup', () => mouse.down = false);
+
+        // --- UPDATE LOOP ---
+        function update() {
+            if (!gameState.active) return;
+            
+            const p = gameState.localPlayer;
+            if (p && p.alive) {
+                // Movimiento
+                if (keys['w']) p.y -= p.speed;
+                if (keys['s']) p.y += p.speed;
+                if (keys['a']) p.x -= p.speed;
+                if (keys['d']) p.x += p.speed;
+
+                // Colisiones paredes (simple)
+                gameState.walls.forEach(w => {
+                    if (p.x > w.x && p.x < w.x + w.w && p.y > w.y && p.y < w.y + w.h) {
+                        // Empujarlo fuera (muy simple)
+                        p.x -= (keys['d'] ? p.speed : 0) - (keys['a'] ? p.speed : 0);
+                        p.y -= (keys['s'] ? p.speed : 0) - (keys['w'] ? p.speed : 0);
+                    }
+                });
+
+                // Apuntar
+                p.angle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+
+                // Disparar
+                let weapon = p.weapons[p.currentWeaponIdx];
+                if (mouse.down && weapon.type === 'auto') p.shoot();
+                if (mouse.down && weapon.type !== 'auto' && !p.triggerHeld) {
+                    p.shoot();
+                    p.triggerHeld = true;
+                }
+                if (!mouse.down) p.triggerHeld = false;
+            }
+
+            // Actualizar entidades y balas
+            gameState.entities.forEach(e => e.update());
+            gameState.bullets.forEach((b, i) => {
+                b.x += b.vx;
+                b.y += b.vy;
+                
+                // Colisión balas con paredes
+                let hitWall = gameState.walls.some(w => b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h);
+                if (hitWall || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                    gameState.bullets.splice(i, 1);
+                    return;
+                }
+
+                // Colisión balas con entidades
+                gameState.entities.forEach(e => {
+                    if (e !== b.owner && e.alive && e.team !== b.owner.team) {
+                        let dx = b.x - e.x;
+                        let dy = b.y - e.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < e.radius + 5) {
+                            e.hp -= b.dmg;
+                            if (e.hp <= 0) e.alive = false;
+                            gameState.bullets.splice(i, 1);
+                            checkRoundEnd();
+                            updateHUD();
+                        }
+                    }
+                });
+            });
+        }
+
+        // --- DRAW LOOP ---
+        function draw() {
+            // Fondo
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar Paredes
+            ctx.fillStyle = '#111'; // Paredes oscuras
+            gameState.walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
+
+            // Dibujar Entidades (Solo para render normal, la visión las oculta después)
+            gameState.entities.forEach(e => {
+                if (!e.alive) return;
+                ctx.save();
+                ctx.translate(e.x, e.y);
+                ctx.rotate(e.angle);
+                
+                // Cuerpo
+                ctx.fillStyle = e.team === 'blue' ? '#3498db' : '#e74c3c';
+                ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI*2); ctx.fill();
+                
+                // Manos/Arma
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(5, -2, 15, 4); 
+                
+                ctx.restore();
+            });
+
+            // Balas
+            ctx.fillStyle = '#ff0';
+            gameState.bullets.forEach(b => {
+                ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI*2); ctx.fill();
+            });
+
+            // === FOG OF WAR / VISIÓN ===
+            if (gameState.localPlayer && gameState.localPlayer.alive) {
+                drawVisionCone(gameState.localPlayer);
+            }
+        }
+
+        function loop() {
+            if (gameState.active) {
+                update();
+                draw();
+                requestAnimationFrame(loop);
+            }
+        }
+
+        // --- UI & TOOLS ---
+        function startTimer() {
+            let interval = setInterval(() => {
+                if (!gameState.active) { clearInterval(interval); return; }
+                gameState.timer--;
+                let m = Math.floor(gameState.timer / 60);
+                let s = gameState.timer % 60;
+                document.getElementById('timer-box').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                if (gameState.timer <= 0) checkRoundEnd();
+            }, 1000);
+        }
+
+        function updateHUD() {
+            const p = gameState.localPlayer;
+            if (!p) return;
+            
+            // Score
+            document.getElementById('score-board').innerText = `AZUL ${gameState.score.blue} - ${gameState.score.red} ROJO`;
+
+            // Weapon
+            let w = p.weapons[p.currentWeaponIdx];
+            document.getElementById('weapon-icon').innerText = w.name;
+            document.getElementById('ammo-info').innerText = w.maxAmmo ? `${w.currentAmmo} / ∞` : '-';
+
+            // Team Lists
+            const renderList = (team, elementId) => {
+                const list = gameState.entities.filter(e => e.team === team);
+                let html = '';
+                list.forEach(e => {
+                    html += `<div class="${e.alive ? 'alive' : 'dead'}">●</div>`;
+                });
+                document.getElementById(elementId).innerHTML = html;
+            };
+            renderList('blue', 'my-team-list');
+            renderList('red', 'enemy-team-list');
+        }
+
+        function playSound(type) {
+            // Placeholder para sonidos
+        }
+
+    </script>
+</body>
+</html>
