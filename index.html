@@ -2,91 +2,108 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Simple CS: Tactical Update</title>
+    <title>Simple CS: Tactical Update v2</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* ESTILOS (Mantenemos la base oscura y limpia) */
-        body { margin: 0; overflow: hidden; background: #080808; font-family: 'Segoe UI', monospace; color: white; user-select: none; }
-        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        canvas { background: #181818; box-shadow: 0 0 50px rgba(0,0,0,0.5); border: 1px solid #333; }
+        /* --- ESTILOS VISUALES --- */
+        body { margin: 0; overflow: hidden; background: #0b0b0b; font-family: 'Segoe UI', monospace; color: white; user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
+        canvas { background: #141414; box-shadow: 0 0 60px rgba(0,0,0,0.8); border: 2px solid #333; border-radius: 4px; }
 
         /* UI MENÚS */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .hidden { display: none !important; }
 
-        h1 { font-size: 70px; color: #ff9d00; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 5px; text-shadow: 0 0 20px rgba(255, 157, 0, 0.4); }
-        .box { background: #1e1e1e; padding: 40px; border: 1px solid #333; border-radius: 12px; text-align: center; min-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { font-size: 80px; color: #f39c12; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 8px; font-weight: 900; text-shadow: 0 0 30px rgba(243, 156, 18, 0.3); font-style: italic; }
+        .subtitle { color: #7f8c8d; font-size: 18px; margin-bottom: 40px; letter-spacing: 2px; }
         
-        button { background: #ff9d00; color: #000; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; margin: 10px 0; border-radius: 4px; transition: 0.2s; }
-        button:hover { background: #ffc107; transform: translateY(-2px); }
-        button.secondary { background: #333; color: #fff; border: 1px solid #555; }
-        button.secondary:hover { background: #444; }
+        .box { background: linear-gradient(145deg, #1e1e1e, #181818); padding: 40px; border: 1px solid #333; border-radius: 8px; text-align: center; min-width: 350px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         
-        input[type="text"] { width: 90%; padding: 15px; text-align: center; background: #111; border: 1px solid #444; color: white; font-size: 16px; margin-bottom: 15px; border-radius: 4px; }
+        button { background: #f39c12; color: #111; border: none; padding: 16px 30px; font-size: 16px; font-weight: 800; cursor: pointer; width: 100%; margin: 10px 0; border-radius: 4px; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; }
+        button:hover { background: #ffb74d; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3); }
+        button:active { transform: translateY(0); }
+        button.secondary { background: transparent; color: #888; border: 2px solid #444; }
+        button.secondary:hover { border-color: #ddd; color: #ddd; background: rgba(255,255,255,0.05); }
+        
+        input[type="text"] { width: 90%; padding: 15px; text-align: center; background: #0f0f0f; border: 1px solid #444; color: #f39c12; font-size: 18px; margin-bottom: 15px; border-radius: 4px; font-family: monospace; letter-spacing: 2px; }
         
         /* Checkbox Switch */
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; color: #aaa; font-size: 14px; background: #111; padding: 10px; border-radius: 4px; }
-        input[type="checkbox"] { transform: scale(1.5); accent-color: #ff9d00; cursor: pointer; }
+        .toggle-container { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; color: #aaa; font-size: 14px; background: #111; padding: 12px; border-radius: 4px; border: 1px solid #222; }
+        input[type="checkbox"] { transform: scale(1.5); accent-color: #f39c12; cursor: pointer; }
 
-        .code-display { font-size: 20px; color: #0f0; background: #000; padding: 12px; border: 1px dashed #0f0; margin: 15px 0; cursor: pointer; word-break: break-all; }
+        .code-display { font-size: 24px; color: #2ecc71; background: #000; padding: 15px; border: 1px dashed #2ecc71; margin: 20px 0; cursor: pointer; word-break: break-all; font-family: monospace; transition: 0.2s; }
+        .code-display:hover { background: #0a1f0a; }
 
         /* HUD */
-        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .top-bar { display: flex; justify-content: center; gap: 50px; padding: 25px; font-size: 32px; font-weight: 900; text-shadow: 2px 2px 0 #000; }
-        .score-box { background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 8px; border-top: 4px solid; display: flex; gap: 15px; }
-        .s-blue { border-color: #4facfe; color: #4facfe; }
-        .s-red { border-color: #ff5858; color: #ff5858; }
-        .timer { font-family: monospace; color: #fff; background: #222; padding: 5px 15px; border-radius: 4px; border: 1px solid #444; }
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; padding: 30px; box-sizing: border-box; }
+        .top-bar { display: flex; justify-content: center; gap: 40px; align-items: center; }
         
-        .hud-bottom { position: absolute; bottom: 30px; left: 30px; display: flex; align-items: flex-end; gap: 20px; }
-        .hp-bar-container { width: 200px; height: 10px; background: #333; border-radius: 5px; overflow: hidden; margin-top: 5px;}
-        .hp-fill { height: 100%; background: #0f0; transition: width 0.2s; }
-        .hp-text { font-size: 24px; font-weight: bold; color: #fff; text-shadow: 1px 1px 0 #000; }
+        .score-box { background: rgba(0,0,0,0.8); padding: 8px 25px; border-radius: 4px; font-size: 36px; font-weight: 900; min-width: 60px; text-align: center; }
+        .s-blue { border-bottom: 4px solid #3498db; color: #3498db; }
+        .s-red { border-bottom: 4px solid #e74c3c; color: #e74c3c; }
         
-        .weapon-card { text-align: right; background: rgba(0,0,0,0.6); padding: 15px; border-right: 4px solid #ff9d00; border-radius: 4px; }
-        .w-name { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .w-ammo { font-size: 36px; color: #fff; font-family: monospace; }
+        .timer { font-family: 'Consolas', monospace; font-size: 32px; color: #ecf0f1; background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 4px; border: 1px solid #444; }
         
-        /* Hit Marker (Extra) */
-        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; pointer-events: none; opacity: 0; transition: opacity 0.1s; }
-        #hit-marker::before, #hit-marker::after { content: ''; position: absolute; top: 9px; left: 0; width: 20px; height: 2px; background: #fff; transform: rotate(45deg); }
+        .hud-bottom { position: absolute; bottom: 30px; left: 30px; display: flex; align-items: flex-end; gap: 30px; }
+        .status-card { background: rgba(0,0,0,0.7); padding: 15px 20px; border-radius: 4px; border-left: 4px solid #fff; backdrop-filter: blur(4px); }
+        
+        .hp-text { font-size: 14px; color: #aaa; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .hp-val { font-size: 32px; color: #fff; font-weight: 900; line-height: 1; }
+        .hp-bar-bg { width: 200px; height: 6px; background: #333; margin-top: 10px; border-radius: 3px; }
+        .hp-fill { height: 100%; background: #2ecc71; width: 100%; border-radius: 3px; transition: width 0.2s, background 0.2s; }
+        
+        .weapon-card { text-align: right; border-left: none; border-right: 4px solid #f39c12; }
+        .w-name { font-size: 14px; color: #f39c12; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        .w-ammo { font-size: 40px; color: #fff; font-family: monospace; font-weight: 700; }
+        .ammo-icon { font-size: 12px; color: #666; }
+        
+        /* Hit Marker */
+        #hit-marker { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; pointer-events: none; opacity: 0; transition: opacity 0.05s; }
+        #hit-marker::before, #hit-marker::after { content: ''; position: absolute; top: 11px; left: 0; width: 24px; height: 2px; background: #fff; transform: rotate(45deg); box-shadow: 0 0 5px rgba(255,255,255,0.8); }
         #hit-marker::after { transform: rotate(-45deg); }
+
+        #lag-indicator { position: absolute; top: 10px; right: 10px; color: red; font-size: 12px; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
 
     <div id="menu" class="overlay">
         <h1>SIMPLE CS</h1>
+        <div class="subtitle">TACTICAL UPDATE</div>
+        
         <div class="box" id="menu-start">
             <div class="toggle-container">
                 <span>INCLUIR BOTS (IA)</span>
                 <input type="checkbox" id="chk-bots" checked>
             </div>
-            <button onclick="setupHost()">CREAR PARTIDA</button>
-            <button class="secondary" onclick="showJoin()">UNIRSE</button>
+            <button onclick="setupHost()">CREAR SALA</button>
+            <button class="secondary" onclick="showJoin()">UNIRSE A SALA</button>
         </div>
         
         <div class="box hidden" id="menu-host">
-            <p>TU CÓDIGO DE PARTIDA:</p>
+            <p style="color:#aaa; font-size: 14px; margin-bottom:5px;">CÓDIGO DE LA SALA</p>
             <div class="code-display" id="my-id" onclick="copyId()">Generando...</div>
-            <p id="status-host" style="color: #ff9d00;">Esperando rival...</p>
+            <p id="status-host" style="color: #f39c12; font-weight: bold;">Esperando jugador...</p>
         </div>
 
         <div class="box hidden" id="menu-join">
-            <input type="text" id="host-id" placeholder="Pegar código del host">
+            <input type="text" id="host-id" placeholder="Pegar código aquí...">
             <button onclick="joinGame()">CONECTAR</button>
-            <button class="secondary" onclick="location.reload()">ATRÁS</button>
+            <button class="secondary" onclick="location.reload()">VOLVER</button>
         </div>
     </div>
 
     <div id="game-over" class="overlay hidden">
-        <h1 id="winner-msg">VICTORIA</h1>
-        <button onclick="location.reload()" style="width: 200px;">MENÚ</button>
+        <h1 id="winner-msg" style="font-size: 60px;">VICTORIA</h1>
+        <button onclick="location.reload()" style="width: 250px;">MENÚ PRINCIPAL</button>
     </div>
 
     <div id="game-container">
         <canvas id="canvas"></canvas>
-        <div id="hit-marker"></div> <div id="hud" class="hidden">
+        <div id="hit-marker"></div>
+        <div id="lag-indicator">⚠ DESYNC</div>
+        
+        <div id="hud" class="hidden">
             <div class="top-bar">
                 <div class="score-box s-blue"><span id="score-b">0</span></div>
                 <div class="timer" id="timer">02:30</div>
@@ -94,54 +111,64 @@
             </div>
             
             <div class="hud-bottom">
-                <div>
-                    <div class="hp-text" id="hp-text">HP: 20</div>
-                    <div class="hp-bar-container"><div class="hp-fill" id="hp-bar"></div></div>
+                <div class="status-card">
+                    <div class="hp-text">Salud</div>
+                    <div class="hp-val" id="hp-val">100</div>
+                    <div class="hp-bar-bg"><div class="hp-fill" id="hp-bar"></div></div>
                 </div>
-                <div class="weapon-card">
-                    <div class="w-name" id="w-name">GLOCK</div>
-                    <div class="w-ammo" id="w-ammo">12</div>
+                <div class="status-card weapon-card">
+                    <div class="w-name" id="w-name">GLOCK-18</div>
+                    <div class="w-ammo" id="w-ammo">12 <span class="ammo-icon">/ AUTO</span></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // === 1. CONFIGURACIÓN & BALANCE ===
+        // === 1. CONFIGURACIÓN TÁCTICA ===
         const CONFIG = {
             width: 1280, height: 720,
-            walkSpeed: 3, runSpeed: 5.5,
-            maxHP: 20, // Vida reducida
-            roundTime: 150, winScore: 7
+            // Velocidades reducidas para mejor control y menos lag visual
+            walkSpeed: 2.2, 
+            runSpeed: 4.0, 
+            maxHP: 100, 
+            roundTime: 120, 
+            winScore: 10,
+            interp: 0.3 // Factor de suavizado para interpolación
         };
 
         const WEAPONS = [
-            // ID 0: Subfusil
-            { name: 'MP5', rate: 90, dmg: 2, speed: 22, auto: true, ammo: 30, color: '#333', w:8, h:24, unlock: 4 },
+            // ID 0: Rifle de asalto
+            { name: 'M4A4', rate: 100, dmg: 12, speed: 25, auto: true, ammo: 30, color: '#333', w:8, h:26, spread: 0.05 },
             // ID 1: Pistola
-            { name: 'GLOCK', rate: 250, dmg: 2, speed: 22, auto: false, ammo: 12, color: '#555', w:6, h:16, unlock: 1 },
+            { name: 'USP-S', rate: 250, dmg: 18, speed: 22, auto: false, ammo: 12, color: '#555', w:6, h:16, spread: 0.02 },
             // ID 2: Cuchillo
-            { name: 'KNIFE', rate: 600, dmg: 10, speed: 0, auto: false, ammo: -1, color: '#ccc', w:4, h:14, unlock: 1 }
+            { name: 'KARAMBIT', rate: 500, dmg: 60, speed: 0, auto: false, ammo: -1, color: '#222', w:4, h:12, spread: 0 }
         ];
 
-        // === 2. ESTADO DEL MOTOR ===
+        // === 2. MOTOR & ESTADO ===
         let canvas = document.getElementById('canvas');
         let ctx = canvas.getContext('2d');
+        // Suavizado de renderizado
+        ctx.imageSmoothingEnabled = false; 
         canvas.width = CONFIG.width;
         canvas.height = CONFIG.height;
 
         let isHost = false, peer, conn;
         let useBots = true;
-        
+        let myPlayerId = -1; // -1 = espectador/no asignado
+
+        // Estado del juego
         let state = {
             active: false, round: 1, timer: CONFIG.roundTime,
             scores: { b: 0, r: 0 },
-            players: [], bullets: [], walls: [], drops: [] // Nuevo array para loot
+            players: [], bullets: [], walls: [], drops: []
         };
         
+        // Cliente: Variables para predicción
+        let clientLocalPlayer = null; // Copia local para movimiento instantáneo
         let input = { k: {}, m: {x:0, y:0, d:0}, w: 1 };
-        let clientState = null; 
-        let hitMarkerTime = 0;
+        let lastServerState = null;
 
         // === 3. RED (PEERJS) ===
         function setupHost() {
@@ -149,13 +176,15 @@
             document.getElementById('menu-start').classList.add('hidden');
             document.getElementById('menu-host').classList.remove('hidden');
             
-            peer = new Peer();
+            peer = new Peer(); // PeerJS cloud server
             peer.on('open', id => document.getElementById('my-id').innerText = id);
+            
             peer.on('connection', c => {
+                if(conn) return; // Solo 1v1
                 conn = c; isHost = true;
-                conn.send({type: 'config', useBots: useBots}); // Sincronizar config
-                document.getElementById('status-host').innerText = "¡Conectado! Iniciando...";
-                setTimeout(initGameHost, 1000);
+                conn.send({type: 'config', useBots: useBots});
+                document.getElementById('status-host').innerText = "CONECTADO. INICIANDO...";
+                setTimeout(initGameHost, 1500);
             });
         }
 
@@ -165,15 +194,19 @@
         }
 
         function joinGame() {
-            let id = document.getElementById('host-id').value;
+            let id = document.getElementById('host-id').value.trim();
             if(!id) return;
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(id);
+                conn.on('open', () => {
+                    document.getElementById('menu-join').innerHTML = "<h2 style='color:#fff'>CONECTANDO...</h2>";
+                });
+                
                 conn.on('data', d => {
-                    if(d.type === 'config') useBots = d.useBots; // Recibir config del host
-                    if(d.type === 'start') initGameClient();
-                    if(d.type === 'state') clientState = d.payload;
+                    if(d.type === 'config') useBots = d.useBots;
+                    if(d.type === 'start') initGameClient(d.playerId); // Recibimos nuestro ID
+                    if(d.type === 'state') handleServerState(d.payload);
                     if(d.type === 'hit') showHitMarker();
                     if(d.type === 'over') endGameUI(d.winner);
                 });
@@ -182,32 +215,56 @@
 
         function copyId() {
             navigator.clipboard.writeText(document.getElementById('my-id').innerText);
-            alert("ID Copiado");
+            let el = document.getElementById('my-id');
+            el.style.color = '#fff';
+            setTimeout(() => el.style.color = '#2ecc71', 200);
         }
 
-        // === 4. LÓGICA HOST ===
+        // === 4. LÓGICA DEL HOST (SERVIDOR) ===
         function initGameHost() {
+            myPlayerId = 0; // Host siempre es 0
             uiStart();
-            createMap();
-            conn.send({type: 'start'});
+            createTacticalMap();
+            conn.send({type: 'start', playerId: 1}); // Decirle al cliente que es ID 1
             startRound();
             
-            setInterval(gameLoop, 1000/60);
+            // Loop lógico (60 ticks)
+            setInterval(gameLoopHost, 1000/60);
+            // Loop timer (1 seg)
             setInterval(() => {
                 if(state.active && state.timer > 0) state.timer--;
                 if(state.active && state.timer <= 0) endRound('timeout');
             }, 1000);
 
-            conn.on('data', d => { if(d.type === 'input') handleInput(1, d.payload); });
+            conn.on('data', d => { 
+                if(d.type === 'input') handleInput(1, d.payload); // Procesar input del cliente
+            });
         }
 
-        function createMap() {
+        function createTacticalMap() {
+            // Mapa estilo "3 Carriles"
+            const W = CONFIG.width, H = CONFIG.height;
             state.walls = [
-                {x:0,y:0,w:CONFIG.width,h:20}, {x:0,y:CONFIG.height-20,w:CONFIG.width,h:20},
-                {x:0,y:0,w:20,h:CONFIG.height}, {x:CONFIG.width-20,y:0,w:20,h:CONFIG.height},
-                {x:300,y:200,w:20,h:320}, {x:300,y:200,w:200,h:20},
-                {x:900,y:400,w:20,h:200}, {x:750,y:600,w:170,h:20},
-                {x:550,y:300,w:100,h:100}, {x:600,y:100,w:20,h:100}
+                // Bordes
+                {x:0,y:0,w:W,h:20}, {x:0,y:H-20,w:W,h:20},
+                {x:0,y:0,w:20,h:H}, {x:W-20,y:0,w:20,h:H},
+                
+                // Centro (Mid) - Estructura compleja
+                {x:W/2-60, y:H/2-60, w:120, h:120}, // Bloque central
+                
+                // Izquierda (Ruta A)
+                {x:250, y:150, w:20, h:250}, {x:250, y:150, w:150, h:20}, // L invertida
+                {x:250, y:550, w:100, h:100}, // Caja grande abajo izq
+                
+                // Derecha (Ruta B)
+                {x:900, y:300, w:20, h:300}, // Muro largo
+                {x:920, y:300, w:100, h:20}, 
+                {x:1050, y:100, w:80, h:80}, // Caja arriba der
+                
+                // Coberturas pequeñas dispersas
+                {x:550, y:600, w:60, h:60},
+                {x:650, y:100, w:60, h:60},
+                {x:100, y:H/2-30, w:40, h:60}
             ];
         }
 
@@ -215,163 +272,200 @@
             state.timer = CONFIG.roundTime;
             state.active = true;
             state.bullets = [];
-            state.drops = []; // Limpiar items del suelo
+            state.drops = [];
             
+            // Spawn Points: Azules (Izq) vs Rojos (Der)
             state.players = [
-                newPlayer(0, 'b', 100, 360, false), // Host
-                newPlayer(1, 'r', CONFIG.width-100, 360, false) // Client
+                newPlayer(0, 'b', 100, CONFIG.height/2, false), // Host
+                newPlayer(1, 'r', CONFIG.width-100, CONFIG.height/2, false) // Client
             ];
 
             if(useBots) {
-                state.players.push(newPlayer(2, 'b', 80, 200, true));
-                state.players.push(newPlayer(3, 'b', 80, 520, true));
-                state.players.push(newPlayer(4, 'r', CONFIG.width-80, 200, true));
-                state.players.push(newPlayer(5, 'r', CONFIG.width-80, 520, true));
+                state.players.push(newPlayer(2, 'b', 100, 150, true));
+                state.players.push(newPlayer(3, 'b', 100, CONFIG.height-150, true));
+                state.players.push(newPlayer(4, 'r', CONFIG.width-100, 150, true));
+                state.players.push(newPlayer(5, 'r', CONFIG.width-100, CONFIG.height-150, true));
             }
+            
+            // Reiniciar cliente local para evitar glitches
+            if(myPlayerId === 1) clientLocalPlayer = null;
         }
 
         function newPlayer(id, team, x, y, isBot) {
             return {
                 id, team, x, y, isBot,
                 hp: CONFIG.maxHP, alive: true,
-                angle: 0, weapon: 1, ammo: 12, 
-                lastShot: 0, animOffset: 0 // Para animación de disparo
+                angle: team === 'b' ? 0 : Math.PI, 
+                weapon: 1, ammo: 12, 
+                lastShot: 0, animOffset: 0
             };
         }
 
-        function gameLoop() {
+        function gameLoopHost() {
             if(!state.active) return;
             
+            // Input Host (Local)
             handleInput(0, input);
             
-            // IA Bots + Evitación de paredes
+            // IA Bots
             state.players.forEach(p => { if(p.isBot && p.alive) updateBot(p); });
 
-            // Balas
-            state.bullets.forEach((b, i) => {
+            // Físicas Balas
+            updateBullets();
+            
+            // Drops (Munición)
+            checkDrops();
+
+            // Enviar estado al cliente
+            // Optimizacion: Solo enviamos datos esenciales, no todo el objeto si no cambió
+            if(conn && conn.open) conn.send({type: 'state', payload: state});
+            
+            render(state);
+            updateHUD(state, 0);
+        }
+
+        function updateBullets() {
+            for(let i = state.bullets.length - 1; i >= 0; i--) {
+                let b = state.bullets[i];
                 b.x += b.vx; b.y += b.vy;
                 
-                // Colisión Paredes
+                // Paredes
                 if(state.walls.some(w => rectCol(b.x, b.y, 4, 4, w.x, w.y, w.w, w.h)) || 
                    b.x<0 || b.x>CONFIG.width || b.y<0 || b.y>CONFIG.height) {
-                    state.bullets.splice(i, 1); return;
+                    state.bullets.splice(i, 1); continue;
                 }
 
-                // Colisión Jugadores
+                // Impactos Jugadores
                 for(let p of state.players) {
                     if(p.alive && p.team !== b.team && Math.hypot(p.x-b.x, p.y-b.y) < 18) {
                         p.hp -= b.dmg;
                         state.bullets.splice(i, 1);
                         
-                        // Feedback al atacante
+                        // Feedback de daño
                         if(b.ownerId === 0) showHitMarker(); 
                         else if(b.ownerId === 1) conn.send({type:'hit'});
 
                         if(p.hp <= 0) {
                             p.alive = false;
-                            // DROPEAR MUNICIÓN
                             state.drops.push({x: p.x, y: p.y, type: 'ammo'});
                             checkWin();
                         }
                         break;
                     }
                 }
-            });
-
-            // Animación decay (recoil regresa a 0)
-            state.players.forEach(p => p.animOffset *= 0.8);
-
-            // Colisión con Drops (Mejora)
-            state.players.forEach(p => {
-                if(!p.alive) return;
-                state.drops.forEach((d, i) => {
-                    if(Math.hypot(p.x-d.x, p.y-d.y) < 20) {
-                        // Evento: Recargar munición
-                        p.ammo += 12; // Recarga cartucho
-                        state.drops.splice(i, 1);
-                    }
-                });
-            });
-
-            if(conn && conn.open) conn.send({type: 'state', payload: state});
-            render(state, 0);
-            updateHUD(state, 0);
+            }
+            state.players.forEach(p => p.animOffset *= 0.85); // Recuperación de recoil
         }
 
-        // === 5. FÍSICAS & IA AVANZADA ===
+        function checkDrops() {
+            state.players.forEach(p => {
+                if(!p.alive) return;
+                for(let i=state.drops.length-1; i>=0; i--) {
+                    let d = state.drops[i];
+                    if(Math.hypot(p.x-d.x, p.y-d.y) < 25) {
+                        p.ammo += 15;
+                        state.drops.splice(i, 1);
+                    }
+                }
+            });
+        }
+
+        // === 5. FÍSICAS COMUNES ===
+        // Esta función se usa tanto en Servidor como en Cliente (Predicción)
+        function applyMovement(p, inp, speedInfo) {
+            let s = inp.k.shift ? speedInfo.run : speedInfo.walk;
+            let mx = (inp.k.d ? s : 0) - (inp.k.a ? s : 0);
+            let my = (inp.k.s ? s : 0) - (inp.k.w ? s : 0);
+            
+            // Normalizar diagonal
+            if(mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
+
+            // Colisiones simples (Eje X)
+            if(!wallCol(p.x + mx, p.y)) p.x += mx;
+            // Colisiones simples (Eje Y)
+            if(!wallCol(p.x, p.y + my)) p.y += my;
+            
+            // Ángulo
+            p.angle = inp.m.a;
+        }
+
         function handleInput(pid, inp) {
             let p = state.players[pid];
             if(!p || !p.alive) return;
 
+            // Selección arma
             let wId = inp.w;
-            if(state.round < 4 && wId === 0) wId = 1; 
+            if(state.round < 2 && wId === 0) wId = 1; // Ronda pistolas
             p.weapon = wId;
 
-            let s = inp.k.shift ? CONFIG.runSpeed : CONFIG.walkSpeed;
-            let mx = (inp.k.d ? s : 0) - (inp.k.a ? s : 0);
-            let my = (inp.k.s ? s : 0) - (inp.k.w ? s : 0);
+            // Movimiento (Lógica compartida)
+            // Calculamos el ángulo en base a la posición actual del jugador y el mouse
+            if(pid === 0) { // Host calcula ángulo localmente con mouse raw
+                inp.m.a = Math.atan2(inp.m.y - p.y, inp.m.x - p.x);
+            }
+            // Cliente envía ángulo ya calculado, o lo calculamos si es necesario.
+            // Nota: En applyMovement usamos inp.m.a
 
-            if(!wallCol(p.x + mx, p.y)) p.x += mx;
-            if(!wallCol(p.x, p.y + my)) p.y += my;
-
-            if(pid === 0) p.angle = Math.atan2(inp.m.y - p.y, inp.m.x - p.x);
-            else p.angle = inp.m.a;
+            applyMovement(p, inp, {walk: CONFIG.walkSpeed, run: CONFIG.runSpeed});
 
             if(inp.m.d) tryShoot(p);
         }
 
+        // === 6. IA MEJORADA ===
         function updateBot(bot) {
-            // Buscar enemigo
-            let target = state.players.find(p => p.team !== bot.team && p.alive && Math.hypot(p.x-bot.x, p.y-bot.y) < 800);
-            
+            // IA simple de búsqueda y disparo
+            let enemies = state.players.filter(p => p.team !== bot.team && p.alive);
+            let target = enemies.reduce((nearest, e) => {
+                let d = Math.hypot(e.x-bot.x, e.y-bot.y);
+                return d < nearest.d ? {e, d} : nearest;
+            }, {e:null, d:9999}).e;
+
             if(target) {
-                let desiredAngle = Math.atan2(target.y - bot.y, target.x - bot.x);
+                let angleToTarget = Math.atan2(target.y - bot.y, target.x - bot.x);
                 let dist = Math.hypot(target.x - bot.x, target.y - bot.y);
                 
-                // Raycast "Bigotes" para evitar paredes
-                let feelerX = bot.x + Math.cos(desiredAngle) * 40;
-                let feelerY = bot.y + Math.sin(desiredAngle) * 40;
-                
-                if(wallCol(feelerX, feelerY)) {
-                    // Si va a chocar, gira un poco
-                    bot.angle += 0.15; 
+                // Raycast simple para ver si hay pared
+                let visible = !lineIntersectsWall(bot.x, bot.y, target.x, target.y);
+
+                if(visible) {
+                    bot.angle = angleToTarget;
+                    if(dist < 400 && Math.random() < 0.05) tryShoot(bot); // Dispara
                 } else {
-                    // Si no, apunta al enemigo
-                    bot.angle = desiredAngle;
+                    // Si no ve, intenta rodear (muy básico)
+                    bot.angle += 0.05;
                 }
 
-                // Moverse
+                // Movimiento (acercarse si está lejos)
                 if(dist > 200) {
-                    let mx = Math.cos(bot.angle) * 3;
-                    let my = Math.sin(bot.angle) * 3;
+                    let mx = Math.cos(bot.angle) * 1.5;
+                    let my = Math.sin(bot.angle) * 1.5;
                     if(!wallCol(bot.x + mx, bot.y)) bot.x += mx;
                     if(!wallCol(bot.x, bot.y + my)) bot.y += my;
                 }
-
-                // Disparar
-                if(dist < 500 && Math.random() < 0.02) tryShoot(bot);
             }
+        }
+
+        function lineIntersectsWall(x1, y1, x2, y2) {
+            // Simplificación: Checkea punto medio
+            let mx = (x1+x2)/2, my = (y1+y2)/2;
+            return wallCol(mx, my);
         }
 
         function tryShoot(p) {
             let w = WEAPONS[p.weapon];
             let now = Date.now();
-            
             if(now - p.lastShot < w.rate) return;
             if(w.ammo !== -1 && p.ammo <= 0) return;
 
             p.lastShot = now;
-            p.animOffset = 1; // Disparar animación
-
+            p.animOffset = 1;
             if(w.ammo !== -1) p.ammo--;
 
-            if(p.weapon === 2) { 
-                // Melee (Cuchillo) - Animación es solo visual + hitbox corto
-            } else {
-                let spread = (Math.random() - 0.5) * 0.05;
+            if(p.weapon !== 2) { // No melee
+                let spread = (Math.random() - 0.5) * w.spread;
                 state.bullets.push({
-                    x: p.x + Math.cos(p.angle)*20, 
-                    y: p.y + Math.sin(p.angle)*20,
+                    x: p.x + Math.cos(p.angle)*25, 
+                    y: p.y + Math.sin(p.angle)*25,
                     vx: Math.cos(p.angle + spread) * w.speed,
                     vy: Math.sin(p.angle + spread) * w.speed,
                     team: p.team, dmg: w.dmg, ownerId: p.id
@@ -379,158 +473,225 @@
             }
         }
 
-        // === 6. VISUALES (MODELOS Y ANIMACIONES) ===
-        function initGameClient() {
+        // === 7. CLIENTE: PREDICCIÓN Y RENDERIZADO ===
+        function initGameClient(id) {
+            myPlayerId = id;
             uiStart();
             loopClient();
         }
 
-        function loopClient() {
-            if(clientState) {
-                render(clientState, 1);
-                updateHUD(clientState, 1);
+        function handleServerState(serverState) {
+            // Inicializar mapa si es la primera vez (el cliente no crea mapa, lo recibe o usa config estática)
+            // Aquí asumimos mapa estático compartido por CONFIG.width
+            if(state.walls.length === 0) createTacticalMap(); 
+
+            // Guardar estado del servidor para renderizar enemigos
+            lastServerState = serverState;
+            
+            // Copiar datos del juego (score, timer, balas, drops)
+            state.scores = serverState.scores;
+            state.timer = serverState.timer;
+            state.bullets = serverState.bullets;
+            state.drops = serverState.drops;
+            
+            // Inicializar jugador local si no existe
+            if(!clientLocalPlayer && serverState.players[myPlayerId]) {
+                // Clonamos al jugador del servidor para empezar
+                clientLocalPlayer = JSON.parse(JSON.stringify(serverState.players[myPlayerId]));
             }
             
-            // Enviar Inputs
-            if(conn && conn.open) {
-                let r = canvas.getBoundingClientRect();
-                let myP = clientState?.players[1];
-                let ang = myP ? Math.atan2(input.m.y - myP.y, input.m.x - myP.x) : 0;
+            // Reconciliación (Simple):
+            // Si el servidor dice que estamos muertos, morimos.
+            // Si estamos vivos, ignoramos la posición del servidor para nosotros mismos (confiamos en local),
+            // a menos que la diferencia sea enorme (teleport/lagazo extremo).
+            if(clientLocalPlayer && serverState.players[myPlayerId]) {
+                let sPlayer = serverState.players[myPlayerId];
+                clientLocalPlayer.hp = sPlayer.hp;
+                clientLocalPlayer.alive = sPlayer.alive;
+                clientLocalPlayer.ammo = sPlayer.ammo;
                 
+                // Si la distancia es > 100px, corregir forzosamente (lagazo)
+                let dist = Math.hypot(clientLocalPlayer.x - sPlayer.x, clientLocalPlayer.y - sPlayer.y);
+                if(dist > 100) {
+                    clientLocalPlayer.x = sPlayer.x;
+                    clientLocalPlayer.y = sPlayer.y;
+                    document.getElementById('lag-indicator').style.display = 'block';
+                    setTimeout(() => document.getElementById('lag-indicator').style.display = 'none', 500);
+                }
+            }
+        }
+
+        function loopClient() {
+            if(!myPlayerId || myPlayerId === -1) return;
+            
+            // --- 1. PREDICCIÓN LOCAL (Moverse sin esperar al server) ---
+            if(clientLocalPlayer && clientLocalPlayer.alive) {
+                // Calcular ángulo local
+                let r = canvas.getBoundingClientRect();
+                let mx = input.m.x, my = input.m.y;
+                let angle = Math.atan2(my - clientLocalPlayer.y, mx - clientLocalPlayer.x);
+                input.m.a = angle; // Guardar para enviar
+                
+                // Aplicar movimiento a la copia local
+                applyMovement(clientLocalPlayer, input, {walk: CONFIG.walkSpeed, run: CONFIG.runSpeed});
+                
+                // Selección de arma local para feedback instantáneo
+                let wId = input.w; 
+                clientLocalPlayer.weapon = wId; 
+                
+                // Animación de disparo local (solo visual)
+                if(input.m.d) {
+                    let w = WEAPONS[clientLocalPlayer.weapon];
+                    let now = Date.now();
+                    if(now - (clientLocalPlayer.lastShot||0) > w.rate && clientLocalPlayer.ammo > 0) {
+                        clientLocalPlayer.lastShot = now;
+                        clientLocalPlayer.animOffset = 1;
+                        // No bajamos munición real aquí, esperamos al server, pero visualmente ayuda
+                    }
+                }
+                clientLocalPlayer.animOffset = (clientLocalPlayer.animOffset||0) * 0.85;
+            }
+
+            // --- 2. ENVIAR INPUT AL HOST ---
+            if(conn && conn.open) {
                 conn.send({
                     type: 'input',
-                    payload: { k: input.k, m: {x: input.m.x, y: input.m.y, a: ang, d: input.m.d}, w: input.w }
+                    payload: { 
+                        k: input.k, 
+                        m: {x: input.m.x, y: input.m.y, a: input.m.a, d: input.m.d}, 
+                        w: input.w 
+                    }
                 });
             }
+
+            // --- 3. CONSTRUIR ESTADO DE RENDERIZADO ---
+            // Mezclamos: Mi jugador local + Enemigos del server
+            let renderState = { ...state }; // Copia superficial
+            
+            if(lastServerState) {
+                // Usamos la lista de jugadores del servidor, PERO reemplazamos el nuestro por el local
+                renderState.players = lastServerState.players.map(p => {
+                    if(p.id === myPlayerId && clientLocalPlayer) return clientLocalPlayer;
+                    return p; // Enemigos (Server)
+                });
+            }
+
+            render(renderState);
+            updateHUD(renderState, myPlayerId);
+            
             requestAnimationFrame(loopClient);
         }
 
-        function render(st, myId) {
-            // Fondo limpio
-            ctx.fillStyle = '#111';
+        // === 8. RENDERIZADO ===
+        function render(st) {
+            // Fondo
+            ctx.fillStyle = '#141414';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Suelo (Grid sutil)
-            ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+            // Grid Suelo Táctico
+            ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
             ctx.beginPath();
-            for(let i=0; i<CONFIG.width; i+=50) { ctx.moveTo(i,0); ctx.lineTo(i,CONFIG.height); }
-            for(let i=0; i<CONFIG.height; i+=50) { ctx.moveTo(0,i); ctx.lineTo(CONFIG.width,i); }
+            for(let i=0; i<CONFIG.width; i+=100) { ctx.moveTo(i,0); ctx.lineTo(i,CONFIG.height); }
+            for(let i=0; i<CONFIG.height; i+=100) { ctx.moveTo(0,i); ctx.lineTo(CONFIG.width,i); }
             ctx.stroke();
 
-            // Drops (Mejoras en el suelo)
+            // Zonas de Compra / Bases (Visual)
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.1)'; ctx.fillRect(0, CONFIG.height/2 - 100, 150, 200); // Zona CT
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.1)'; ctx.fillRect(CONFIG.width-150, CONFIG.height/2 - 100, 150, 200); // Zona T
+
+            // Drops
             st.drops.forEach(d => {
-                ctx.fillStyle = '#0f0';
-                ctx.fillRect(d.x-5, d.y-5, 10, 10);
-                ctx.strokeStyle = '#fff';
-                ctx.strokeRect(d.x-5, d.y-5, 10, 10);
-                // Brillo
-                ctx.shadowColor = '#0f0'; ctx.shadowBlur = 10;
-                ctx.fill(); ctx.shadowBlur = 0;
+                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(d.x, d.y, 8, 0, Math.PI*2); ctx.fill();
+                ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 15; ctx.stroke(); ctx.shadowBlur = 0;
             });
 
-            // Paredes (Estilo sólido)
-            ctx.fillStyle = '#2a2a2a';
-            ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
+            // Paredes (Estilo Clean)
+            ctx.fillStyle = '#2c3e50';
+            ctx.strokeStyle = '#34495e'; ctx.lineWidth = 3;
             st.walls.forEach(w => {
                 ctx.fillRect(w.x, w.y, w.w, w.h);
                 ctx.strokeRect(w.x, w.y, w.w, w.h);
+                // Detalle "3D" falso
+                ctx.fillStyle = '#1a252f'; ctx.fillRect(w.x+5, w.y+5, w.w-10, w.h-10); ctx.fillStyle = '#2c3e50';
             });
 
-            // Balas (Trails)
-            ctx.strokeStyle = '#ffffaa'; ctx.lineWidth = 2;
+            // Balas
+            ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 2;
             st.bullets.forEach(b => {
-                ctx.beginPath();
-                ctx.moveTo(b.x, b.y);
-                ctx.lineTo(b.x - b.vx, b.y - b.vy); // Trail basado en velocidad
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx*1.5, b.y - b.vy*1.5); ctx.stroke();
             });
 
             // Jugadores
             st.players.forEach(p => {
                 if(!p.alive) {
-                    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
-                    ctx.fillStyle = '#420000'; // Sangre
-                    ctx.beginPath(); ctx.arc(0,0,15,0,Math.PI*2); ctx.fill();
-                    ctx.fillStyle = '#222'; // Cuerpo muerto
-                    ctx.fillRect(-10,-10,20,20);
-                    ctx.restore();
+                    ctx.fillStyle = '#550000'; ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI*2); ctx.fill(); // Sangre
+                    ctx.fillStyle = '#333'; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle); ctx.fillRect(-10,-5,20,10); ctx.restore(); // Cuerpo
                     return;
                 }
 
                 ctx.save();
                 ctx.translate(p.x, p.y);
                 
-                // Barra de Vida Aliada
-                if(p.team === st.players[myId].team && p.id !== myId) {
-                    ctx.fillStyle = '#0f0';
-                    ctx.fillRect(-15, -25, 30 * (p.hp/CONFIG.maxHP), 4);
+                // Barra HP Enemigos/Aliados
+                if(p.id !== myPlayerId) {
+                    ctx.fillStyle = p.team === st.players[myPlayerId]?.team ? '#2ecc71' : '#e74c3c';
+                    ctx.fillRect(-15, -30, 30 * (p.hp/CONFIG.maxHP), 4);
                 }
 
                 ctx.rotate(p.angle);
 
-                // -- MODELO JUGADOR --
-                // Hombros
-                ctx.fillStyle = p.team === 'b' ? '#2980b9' : '#c0392b';
-                ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
-                // Casco/Cabeza
-                ctx.fillStyle = p.team === 'b' ? '#3498db' : '#e74c3c';
-                ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
-                if(p.id === myId) { // Borde blanco para mi jugador
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                }
+                // Cuerpo
+                ctx.fillStyle = p.team === 'b' ? '#2980b9' : '#c0392b'; // Azul / Rojo
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.stroke();
 
-                // -- MODELO ARMA (TEXTURA PROCEDURAL) --
+                // Arma
                 let w = WEAPONS[p.weapon];
-                let recoil = p.animOffset * 6; // Retroceso visual
-                let stab = (p.weapon === 2) ? p.animOffset * 15 : 0; // Animación cuchillo
-
-                ctx.save();
-                ctx.translate(10 + stab - recoil, 5); // Posición mano derecha
-
+                let recoil = (p.animOffset||0) * 8;
+                let stab = p.weapon === 2 ? (p.animOffset||0) * 20 : 0;
+                
+                ctx.translate(12 + stab - recoil, 6); // Mano derecha
+                
                 ctx.fillStyle = w.color;
-                
-                if(p.weapon === 0) { // SMG
-                    ctx.fillRect(0, -2, 24, 6); // Cañon
-                    ctx.fillStyle = '#111'; ctx.fillRect(5, 2, 4, 8); // Cargador
-                    ctx.fillStyle = '#222'; ctx.fillRect(-5, -2, 8, 6); // Culata
-                } else if (p.weapon === 1) { // Pistola
-                    ctx.fillRect(0, -2, 16, 5);
-                } else { // Cuchillo
-                    ctx.fillStyle = '#5c4033'; ctx.fillRect(0, 0, 6, 4); // Mango
-                    ctx.fillStyle = '#ddd'; ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(16, 2); ctx.lineTo(6, 4); ctx.fill(); // Hoja
-                }
-                
-                ctx.restore();
+                ctx.fillRect(0, -w.h/2, w.w + 10, w.h); // Cuerpo arma
                 
                 // Manos
-                ctx.fillStyle = '#f1c27d'; // Piel
-                ctx.beginPath(); ctx.arc(10 - recoil + stab, 5, 4, 0, Math.PI*2); ctx.fill(); // Mano der
-                if(p.weapon === 0) { ctx.beginPath(); ctx.arc(15 - recoil, -5, 4, 0, Math.PI*2); ctx.fill(); } // Mano izq (SMG)
+                ctx.fillStyle = '#f3c2a3'; // Piel
+                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill(); // Derecha
+                if(p.weapon !== 1) { // Mano izquierda si no es pistola
+                    ctx.beginPath(); ctx.arc(5, -10, 5, 0, Math.PI*2); ctx.fill();
+                }
 
                 ctx.restore();
             });
         }
 
-        // === 7. UI & UTILIDADES ===
+        // === 9. UI & HELPERS ===
         function updateHUD(st, myId) {
             document.getElementById('score-b').innerText = st.scores.b;
             document.getElementById('score-r').innerText = st.scores.r;
             
             let m = Math.floor(st.timer/60); let s = st.timer%60;
             document.getElementById('timer').innerText = `${m}:${s<10?'0'+s:s}`;
+            
+            // Barra de color Timer
+            let tElem = document.getElementById('timer');
+            if(st.timer < 30) tElem.style.color = '#e74c3c'; else tElem.style.color = '#fff';
 
-            let me = st.players[myId];
-            if(me) {
+            let me = st.players.find(p => p.id === myId);
+            if(me && me.alive) {
                 let w = WEAPONS[me.weapon];
                 document.getElementById('w-name').innerText = w.name;
-                document.getElementById('w-ammo').innerText = w.ammo === -1 ? '∞' : me.ammo;
+                document.getElementById('w-ammo').innerHTML = (w.ammo === -1 ? '∞' : me.ammo) + " <span class='ammo-icon'>/ "+(w.auto?'AUTO':'SEMI')+"</span>";
                 
-                // Barra de vida propia
-                document.getElementById('hp-text').innerText = `HP: ${Math.max(0, me.hp)}`;
+                document.getElementById('hp-val').innerText = Math.max(0, Math.ceil(me.hp));
                 let pct = (Math.max(0, me.hp) / CONFIG.maxHP) * 100;
                 let bar = document.getElementById('hp-bar');
                 bar.style.width = pct + '%';
-                bar.style.backgroundColor = pct < 30 ? '#f00' : '#0f0';
+                bar.style.backgroundColor = pct < 30 ? '#e74c3c' : (pct < 60 ? '#f39c12' : '#2ecc71');
+            } else if(me && !me.alive) {
+                 document.getElementById('hp-val').innerText = "MUERTO";
+                 document.getElementById('hp-bar').style.width = '0%';
             }
         }
 
@@ -555,7 +716,7 @@
         function endRound(winner) {
             state.active = false;
             if(winner === 'b') state.scores.b++;
-            else if(winner === 'r') state.scores.r++;
+            if(winner === 'r') state.scores.r++;
 
             if(state.scores.b >= CONFIG.winScore || state.scores.r >= CONFIG.winScore) {
                 let txt = winner === 'b' ? 'EQUIPO AZUL' : 'EQUIPO ROJO';
@@ -563,7 +724,8 @@
                 endGameUI(txt);
             } else {
                 state.round++;
-                setTimeout(startRound, 2500);
+                // Reset posiciones (Muy básico)
+                setTimeout(startRound, 3000);
             }
         }
 
@@ -572,7 +734,7 @@
             document.getElementById('winner-msg').innerText = winner + " GANA";
         }
 
-        // Utilidades Físicas
+        // Utils
         function rectCol(x, y, w, h, rx, ry, rw, rh) { return x < rx + rw && x + w > rx && y < ry + rh && y + h > ry; }
         function wallCol(x, y) { return state.walls.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h); }
 
@@ -589,7 +751,6 @@
             let r = canvas.getBoundingClientRect();
             input.m.x = e.clientX - r.left; input.m.y = e.clientY - r.top;
         });
-
     </script>
 </body>
 </html>
