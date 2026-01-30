@@ -2,197 +2,86 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Simple CS: Online</title>
+    <title>Simple CS: Competitive</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* === ESTILOS GENERALES === */
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background: #000; 
-            font-family: 'Arial', sans-serif; 
-            color: white; 
-            user-select: none; 
-        }
+        /* ESTILOS GENERALES */
+        body { margin: 0; overflow: hidden; background: #050505; font-family: 'Consolas', monospace; color: white; user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { background: #1a1a1a; box-shadow: 0 0 0 2px #333; }
 
-        /* Contenedor del juego */
-        #game-wrapper { 
-            position: relative; 
-            width: 100vw; 
-            height: 100vh; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background: #111;
-        }
-
-        canvas { 
-            background: #222;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); 
-            border-radius: 4px; 
-            cursor: crosshair; 
-        }
-        
-        /* === MENÚ PRINCIPAL (CORREGIDO) === */
-        #menu-screen { 
-            position: fixed; /* Asegura que esté fijo en la pantalla */
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: rgba(10, 10, 10, 0.95); /* Fondo oscuro casi opaco */
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 9999; /* Capa superior absoluta */
-        }
-        
-        /* === ELEMENTOS UI === */
+        /* UI OVERLAYS (MENÚS) */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .hidden { display: none !important; }
+
+        h1 { font-size: 64px; color: #f0ad4e; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 5px; }
+        .box { background: #222; padding: 40px; border: 1px solid #444; border-radius: 8px; text-align: center; min-width: 300px; }
         
-        h1 { 
-            font-size: 80px; 
-            margin: 0 0 40px 0; 
-            color: #ff9900; 
-            text-transform: uppercase; 
-            letter-spacing: 5px; 
-            text-shadow: 0 0 20px rgba(255, 153, 0, 0.5);
-        }
-
-        .panel { 
-            background: #222; 
-            padding: 40px; 
-            border-radius: 15px; 
-            border: 2px solid #ff9900; 
-            text-align: center; 
-            min-width: 300px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-        }
-
-        /* Botones muy visibles */
-        .btn { 
-            display: block;
-            width: 100%;
-            background: #ff9900; 
-            color: black; 
-            border: none; 
-            padding: 15px 0; 
-            font-size: 20px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin: 10px 0; 
-            border-radius: 8px; 
-            transition: transform 0.1s;
-        }
-        .btn:hover { transform: scale(1.05); background: #ffaa33; }
+        button { background: #f0ad4e; color: #000; border: none; padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; margin: 10px 0; transition: 0.2s; }
+        button:hover { background: #ffc107; transform: scale(1.02); }
+        button.secondary { background: #444; color: #fff; }
+        button.secondary:hover { background: #555; }
         
-        .btn-secondary { background: #444; color: white; }
-        .btn-secondary:hover { background: #555; }
-
-        input { 
-            padding: 15px; 
-            font-size: 18px; 
-            width: 90%; 
-            margin-bottom: 20px; 
-            text-align: center;
-            border-radius: 5px;
-            border: 1px solid #555;
-            background: #111;
-            color: white;
-        }
-
-        /* === HUD (Interfaz de juego) === */
-        #hud { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            pointer-events: none; 
-            z-index: 50; 
-        }
-
-        #top-bar { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 20px; 
-            font-size: 24px; 
-            font-weight: bold; 
-            text-shadow: 2px 2px 0 #000;
-        }
-
-        .team-blue { color: #4facfe; } 
-        .team-red { color: #ff5858; }
-
-        #weapon-info {
-            position: absolute;
-            bottom: 30px;
-            left: 30px;
-            font-size: 20px;
-            color: #ddd;
-            background: rgba(0,0,0,0.6);
-            padding: 10px 20px;
-            border-left: 5px solid #ff9900;
-        }
+        input { width: 90%; padding: 15px; text-align: center; background: #111; border: 1px solid #555; color: white; font-size: 16px; margin-bottom: 15px; }
         
-        #end-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 10000;
-        }
+        .code-display { font-size: 24px; color: #0f0; background: #000; padding: 10px; border: 1px dashed #0f0; margin: 15px 0; cursor: pointer; }
 
-        .waiting-text {
-            background: #000;
-            color: #0f0;
-            font-family: monospace;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px dashed #0f0;
-            cursor: pointer;
-        }
+        /* HUD (INTERFAZ DE JUEGO) */
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .top-bar { display: flex; justify-content: space-between; padding: 20px; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 0 #000; }
+        .score-blue { color: #5bc0de; }
+        .score-red { color: #d9534f; }
+        .timer { color: #fff; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 5px; }
+        
+        .bottom-left { position: absolute; bottom: 20px; left: 20px; text-align: left; }
+        .weapon-card { background: rgba(0,0,0,0.7); padding: 15px; border-left: 5px solid #f0ad4e; }
+        .w-name { font-size: 14px; color: #aaa; text-transform: uppercase; }
+        .w-ammo { font-size: 32px; color: #fff; }
+        .round-info { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); font-size: 14px; color: #888; }
     </style>
 </head>
 <body>
 
-    <div id="menu-screen">
+    <div id="menu" class="overlay">
         <h1>SIMPLE CS</h1>
+        <div class="box" id="menu-start">
+            <button onclick="setupHost()">CREAR PARTIDA (HOST)</button>
+            <button class="secondary" onclick="showJoin()">UNIRSE A PARTIDA</button>
+        </div>
         
-        <div class="panel" id="menu-main">
-            <p style="color:#aaa; margin-bottom: 20px;">Shooter Táctico 2D con PeerJS</p>
-            <button class="btn" onclick="setupHost()">CREAR PARTIDA</button>
-            <button class="btn btn-secondary" onclick="showJoinMenu()">UNIRSE A PARTIDA</button>
+        <div class="box hidden" id="menu-host">
+            <p>Tu código de partida:</p>
+            <div class="code-display" id="my-id" onclick="copyId()">Cargando ID...</div>
+            <p style="font-size: 12px; color: #aaa;">Comparte este código con tu amigo.</p>
+            <p id="status-host" style="color: yellow; margin-top: 10px;">Esperando jugador...</p>
         </div>
 
-        <div class="panel hidden" id="menu-host">
-            <h3>Tu ID de Partida</h3>
-            <div class="waiting-text" id="my-peer-id" onclick="copyId()">Generando ID...</div>
-            <p style="font-size: 12px; color: #888;">Copia este ID y pásaselo a tu amigo.</p>
-            <button class="btn btn-secondary" onclick="location.reload()">CANCELAR</button>
-        </div>
-
-        <div class="panel hidden" id="menu-join">
-            <h3>Unirse a Partida</h3>
-            <input type="text" id="host-id-input" placeholder="Pega el ID aquí">
-            <button class="btn" onclick="joinGame()">CONECTAR</button>
-            <button class="btn btn-secondary" onclick="location.reload()">VOLVER</button>
+        <div class="box hidden" id="menu-join">
+            <input type="text" id="host-id" placeholder="Pegar código aquí">
+            <button onclick="joinGame()">CONECTAR</button>
+            <button class="secondary" onclick="location.reload()">VOLVER</button>
         </div>
     </div>
 
-    <div id="end-screen" class="hidden">
-        <h1 id="winner-text">VICTORIA</h1>
-        <button class="btn" onclick="location.reload()" style="width: 200px;">MENU</button>
+    <div id="game-over" class="overlay hidden">
+        <h1 id="winner-msg">VICTORIA</h1>
+        <button onclick="location.reload()" style="width: 200px;">MENÚ PRINCIPAL</button>
     </div>
 
-    <div id="game-wrapper">
-        <canvas id="gameCanvas"></canvas>
-        
+    <div id="game-container">
+        <canvas id="canvas"></canvas>
         <div id="hud" class="hidden">
-            <div id="top-bar">
-                <div>AZUL: <span id="score-blue" class="team-blue">0</span></div>
-                <div id="timer">02:30</div>
-                <div>ROJO: <span id="score-red" class="team-red">0</span></div>
+            <div class="top-bar">
+                <div class="score-blue" id="score-b">0</div>
+                <div class="timer" id="timer">02:30</div>
+                <div class="score-red" id="score-r">0</div>
             </div>
-            <div id="weapon-info">
-                <div id="w-name" style="font-size:14px; color:#888;">GLOCK</div>
-                <div id="w-ammo" style="font-size:24px;">12 / ∞</div>
+            <div class="round-info" id="round-display">RONDA 1 / 7</div>
+            <div class="bottom-left">
+                <div class="weapon-card">
+                    <div class="w-name" id="w-name">PISTOLA</div>
+                    <div class="w-ammo" id="w-ammo">12 / ∞</div>
+                </div>
             </div>
         </div>
     </div>
@@ -201,255 +90,429 @@
         // === CONFIGURACIÓN ===
         const CONFIG = {
             width: 1024, height: 768,
-            walkSpeed: 2.5, runSpeed: 4.5
+            walkSpeed: 3, runSpeed: 5,
+            roundTime: 150, // Segundos
+            winScore: 7
         };
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // === ESTADO DEL JUEGO ===
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
         canvas.width = CONFIG.width;
         canvas.height = CONFIG.height;
 
-        // Variables Globales
         let isHost = false;
-        let peer = null, conn = null;
-        let gameState = { active: false, players: [], bullets: [], walls: [], score: {b:0, r:0}, timer: 150, round: 1 };
-        let localInput = { k: {}, m: {x:0, y:0, d:false}, w: 1 };
-        let clientPlayer = null; // Para interpolación cliente
+        let peer, conn;
+        
+        // Estado sincronizado (La verdad absoluta está en el Host)
+        let state = {
+            active: false,
+            round: 1,
+            timer: CONFIG.roundTime,
+            scores: { blue: 0, red: 0 },
+            players: [], // 0:Host, 1:Client, 2,3:BotsBlue, 4,5:BotsRed
+            bullets: [],
+            walls: []
+        };
+        
+        // Input local
+        let input = {
+            keys: { w:0, a:0, s:0, d:0, shift:0 },
+            mouse: { x:0, y:0, down:0 },
+            weapon: 1 // 0:SMG, 1:Pistol, 2:Knife
+        };
 
-        // === MENÚS ===
-        function showJoinMenu() {
-            document.getElementById('menu-main').classList.add('hidden');
-            document.getElementById('menu-join').classList.remove('hidden');
-        }
+        // Cliente: copia del estado para renderizar
+        let clientState = null; 
 
-        function copyId() {
-            navigator.clipboard.writeText(document.getElementById('my-peer-id').innerText);
-            alert("ID Copiado!");
-        }
+        // === DEFINICIÓN DE OBJETOS ===
+        const WEAPONS = [
+            { name: 'SUBFUSIL', rate: 100, dmg: 10, auto: true, ammo: 30, unlock: 4 }, // ID 0
+            { name: 'GLOCK', rate: 300, dmg: 18, auto: false, ammo: 12, unlock: 1 },  // ID 1
+            { name: 'CUCHILLO', rate: 500, dmg: 45, auto: false, ammo: -1, unlock: 1 } // ID 2
+        ];
 
         // === RED (PEERJS) ===
         function setupHost() {
-            document.getElementById('menu-main').classList.add('hidden');
+            document.getElementById('menu-start').classList.add('hidden');
             document.getElementById('menu-host').classList.remove('hidden');
             
-            try {
-                peer = new Peer();
-                peer.on('open', id => {
-                    document.getElementById('my-peer-id').innerText = id;
-                });
-                peer.on('connection', c => {
-                    conn = c;
-                    isHost = true;
-                    startGameHost();
-                });
-                peer.on('error', err => alert("Error PeerJS: " + err));
-            } catch(e) { alert("Error al cargar PeerJS. Revisa tu internet."); }
+            peer = new Peer();
+            peer.on('open', id => document.getElementById('my-id').innerText = id);
+            peer.on('connection', c => {
+                conn = c;
+                isHost = true;
+                document.getElementById('status-host').innerText = "¡Jugador conectado! Iniciando...";
+                setTimeout(startGameHost, 1000);
+            });
+        }
+
+        function showJoin() {
+            document.getElementById('menu-start').classList.add('hidden');
+            document.getElementById('menu-join').classList.remove('hidden');
         }
 
         function joinGame() {
-            const id = document.getElementById('host-id-input').value;
+            let id = document.getElementById('host-id').value;
             if(!id) return;
-            try {
-                peer = new Peer();
-                peer.on('open', myId => {
-                    conn = peer.connect(id);
-                    isHost = false;
+            peer = new Peer();
+            peer.on('open', myId => {
+                conn = peer.connect(id);
+                isHost = false;
+                conn.on('open', () => {
+                    document.getElementById('menu').classList.add('hidden');
+                    document.getElementById('hud').classList.remove('hidden');
                     startGameClient();
                 });
-            } catch(e) { alert("Error al conectar."); }
+            });
         }
 
-        // === INICIO DEL JUEGO ===
+        function copyId() {
+            navigator.clipboard.writeText(document.getElementById('my-id').innerText);
+            alert("ID Copiado");
+        }
+
+        // === LÓGICA DEL HOST ===
         function startGameHost() {
-            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('menu').classList.add('hidden');
             document.getElementById('hud').classList.remove('hidden');
             
-            gameState.active = true;
-            gameState.walls = [
-                {x:0,y:0,w:1024,h:20}, {x:0,y:748,w:1024,h:20}, 
-                {x:0,y:0,w:20,h:768}, {x:1004,y:0,w:20,h:768},
-                {x:200,y:200,w:20,h:200}, {x:200,y:200,w:200,h:20},
-                {x:600,y:500,w:200,h:20}, {x:800,y:400,w:20,h:120}
+            // Definir Mapa (Paredes)
+            state.walls = [
+                {x:0,y:0,w:1024,h:20}, {x:0,y:748,w:1024,h:20}, // Bordes H
+                {x:0,y:0,w:20,h:768}, {x:1004,y:0,w:20,h:768},  // Bordes V
+                {x:200,y:200,w:20,h:300}, {x:200,y:200,w:300,h:20}, // Estructura A
+                {x:700,y:400,w:20,h:200}, {x:600,y:600,w:120,h:20}, // Estructura B
+                {x:450,y:350,w:100,h:100} // Caja Central
             ];
-            
+
             startRound();
-            
-            // Loop de Host
-            conn.on('data', data => { if(data.t === 'i') handleInput(data.p); });
-            setInterval(gameLoopHost, 1000/60);
-            setInterval(() => { if(gameState.active && gameState.timer > 0) gameState.timer--; }, 1000);
-        }
 
-        function startGameClient() {
-            document.getElementById('menu-screen').classList.add('hidden');
-            document.getElementById('hud').classList.remove('hidden');
-            
-            // Loop de Cliente
-            conn.on('data', data => { 
-                if(data.t === 's') {
-                    gameState = data.p;
-                    clientPlayer = gameState.players.find(p => p.id === 'c');
-                    draw();
-                    updateHUD();
-                }
+            // Loop principal del Host (60 FPS)
+            setInterval(updateHost, 1000/60);
+            // Timer del juego (1 segundo)
+            setInterval(() => {
+                if(state.active && state.timer > 0) state.timer--;
+                if(state.active && state.timer <= 0) endRound('timeout');
+            }, 1000);
+
+            // Escuchar inputs del cliente
+            conn.on('data', data => {
+                if(data.type === 'input') handleInput(1, data.payload);
             });
-            loopClient();
         }
 
-        // === LÓGICA DE JUEGO (SIMPLIFICADA) ===
         function startRound() {
-            gameState.players = [
-                {id:'h', team:'b', x:100, y:384, hp:100, alive:true, w:1, ammo:12, ang:0}, // Host
-                {id:'c', team:'r', x:900, y:384, hp:100, alive:true, w:1, ammo:12, ang:0}, // Client
-                {id:'b1', team:'b', x:80, y:300, hp:100, alive:true, w:1, ammo:12, ang:0, bot:true},
-                {id:'r1', team:'r', x:920, y:300, hp:100, alive:true, w:1, ammo:12, ang:0, bot:true}
+            state.timer = CONFIG.roundTime;
+            state.active = true;
+            state.bullets = [];
+            
+            // Reiniciar jugadores
+            state.players = [
+                createPlayer(0, 'blue', 100, 384, false), // Host
+                createPlayer(1, 'red', 900, 384, false),  // Cliente
+                createPlayer(2, 'blue', 80, 300, true),   // Bot Blue 1
+                createPlayer(3, 'blue', 80, 460, true),   // Bot Blue 2
+                createPlayer(4, 'red', 920, 300, true),   // Bot Red 1
+                createPlayer(5, 'red', 920, 460, true)    // Bot Red 2
             ];
-            gameState.bullets = [];
-            gameState.timer = 150;
         }
 
-        function gameLoopHost() {
-            if(!gameState.active) return;
-            
-            // Host Input
-            let h = gameState.players[0];
-            if(h.alive) applyMovement(h, localInput);
+        function createPlayer(id, team, x, y, isBot) {
+            return {
+                id: id, team: team, x: x, y: y, angle: 0,
+                hp: 100, alive: true, isBot: isBot,
+                weapon: 1, ammo: 12, lastShot: 0
+            };
+        }
 
-            // Bots AI
-            gameState.players.forEach(p => {
-                if(p.bot && p.alive) {
-                    // IA tonta: moverse un poco
-                    p.x += Math.sin(Date.now()/500)*1; 
-                }
+        function updateHost() {
+            if(!state.active) return;
+
+            // 1. Procesar Input Host (Jugador 0)
+            handleInput(0, input);
+
+            // 2. IA de Bots
+            state.players.forEach(p => {
+                if(p.isBot && p.alive) updateBot(p);
             });
 
-            // Balas
-            gameState.bullets.forEach((b, i) => {
+            // 3. Físicas de Balas
+            state.bullets.forEach((b, i) => {
                 b.x += b.vx; b.y += b.vy;
-                // Colisiones muy básicas
-                gameState.players.forEach(p => {
-                    if(p.team !== b.team && p.alive && Math.hypot(b.x-p.x, b.y-p.y) < 15) {
-                        p.hp -= b.dmg;
-                        if(p.hp<=0) p.alive = false;
-                        gameState.bullets.splice(i, 1);
+                
+                // Colisión Paredes
+                let hitWall = state.walls.some(w => rectCol(b.x, b.y, 4, 4, w.x, w.y, w.w, w.h));
+                if(hitWall || b.x<0 || b.x>CONFIG.width || b.y<0 || b.y>CONFIG.height) {
+                    state.bullets.splice(i, 1);
+                    return;
+                }
+
+                // Colisión Jugadores
+                state.players.forEach(p => {
+                    if(p.alive && p.team !== b.team) {
+                        let dist = Math.hypot(p.x - b.x, p.y - b.y);
+                        if(dist < 15) {
+                            p.hp -= b.dmg;
+                            if(p.hp <= 0) { p.alive = false; checkWin(); }
+                            state.bullets.splice(i, 1);
+                        }
                     }
                 });
             });
 
-            // Enviar Estado
-            conn.send({t:'s', p:gameState});
-            draw();
-            updateHUD();
+            // 4. Enviar estado al cliente
+            if(conn && conn.open) {
+                conn.send({ type: 'state', payload: state });
+            }
+
+            // 5. Renderizar Host
+            render(state, 0);
+            updateHUD(state, 0);
         }
 
-        function handleInput(inp) {
-            let c = gameState.players[1];
-            if(c && c.alive) applyMovement(c, inp);
+        function handleInput(pid, inp) {
+            let p = state.players[pid];
+            if(!p || !p.alive) return;
+
+            // Restricción de ronda para armas
+            let wId = inp.weapon;
+            if(state.round < 4 && wId === 0) wId = 1; // Forzar pistola si intenta usar subfusil antes de ronda 4
+            p.weapon = wId;
+
+            // Movimiento
+            let speed = inp.keys.shift ? CONFIG.runSpeed : CONFIG.walkSpeed;
+            let dx = 0, dy = 0;
+            if(inp.keys.w) dy -= speed;
+            if(inp.keys.s) dy += speed;
+            if(inp.keys.a) dx -= speed;
+            if(inp.keys.d) dx += speed;
+
+            // Colisiones simples con paredes
+            if(!wallCol(p.x + dx, p.y)) p.x += dx;
+            if(!wallCol(p.x, p.y + dy)) p.y += dy;
+
+            p.angle = inp.mouse.angle; // Se recibe ya calculado o local
+            if(pid === 0) p.angle = Math.atan2(inp.mouse.y - p.y, inp.mouse.x - p.x);
+
+            // Disparo
+            if(inp.mouse.down) tryShoot(p);
         }
 
-        function applyMovement(p, inp) {
-            let s = inp.k['shift'] ? CONFIG.runSpeed : CONFIG.walkSpeed;
-            if(inp.k['w']) p.y -= s;
-            if(inp.k['s']) p.y += s;
-            if(inp.k['a']) p.x -= s;
-            if(inp.k['d']) p.x += s;
-            p.ang = inp.m.a;
-            p.w = inp.w;
+        function updateBot(bot) {
+            // Buscar enemigo más cercano
+            let target = null;
+            let minDist = 9999;
+            state.players.forEach(p => {
+                if(p.team !== bot.team && p.alive) {
+                    let d = Math.hypot(p.x - bot.x, p.y - bot.y);
+                    if(d < minDist) { minDist = d; target = p; }
+                }
+            });
+
+            if(target) {
+                // Calcular ángulo
+                let angle = Math.atan2(target.y - bot.y, target.x - bot.x);
+                bot.angle = angle;
+                
+                // Moverse si está lejos
+                if(minDist > 250) {
+                    let mx = Math.cos(angle) * 2;
+                    let my = Math.sin(angle) * 2;
+                    if(!wallCol(bot.x + mx, bot.y)) bot.x += mx;
+                    if(!wallCol(bot.x, bot.y + my)) bot.y += my;
+                }
+
+                // Disparar
+                if(minDist < 400 && Math.random() < 0.03) tryShoot(bot);
+            }
+        }
+
+        function tryShoot(p) {
+            let w = WEAPONS[p.weapon];
+            let now = Date.now();
             
-            if(inp.m.d) shoot(p);
+            // Cooldown y Munición
+            if(now - p.lastShot < w.rate) return;
+            if(w.ammo !== -1 && p.ammo <= 0) return;
+
+            p.lastShot = now;
+            if(w.ammo !== -1) p.ammo--;
+
+            // Crear bala
+            if(p.weapon === 2) { 
+                // Melee (no implementado visualmente complejo, solo rango corto)
+            } else {
+                let spread = (Math.random() - 0.5) * 0.1;
+                state.bullets.push({
+                    x: p.x, y: p.y,
+                    vx: Math.cos(p.angle + spread) * 12,
+                    vy: Math.sin(p.angle + spread) * 12,
+                    team: p.team, dmg: w.dmg
+                });
+            }
         }
 
-        function shoot(p) {
-            // Lógica simple de disparo (sin cooldown para brevedad, añade si quieres)
-            if(Math.random() > 0.1) return; // Limitar cadencia hacky
-            gameState.bullets.push({
-                x:p.x, y:p.y, vx:Math.cos(p.ang)*15, vy:Math.sin(p.ang)*15, team:p.team, dmg:10
+        function wallCol(x, y) {
+            return state.walls.some(w => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h);
+        }
+        function rectCol(x1, y1, w1, h1, x2, y2, w2, h2) {
+            return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+        }
+
+        function checkWin() {
+            let blueAlive = state.players.filter(p => p.team === 'blue' && p.alive).length;
+            let redAlive = state.players.filter(p => p.team === 'red' && p.alive).length;
+
+            if(blueAlive === 0) endRound('red');
+            else if(redAlive === 0) endRound('blue');
+        }
+
+        function endRound(winner) {
+            state.active = false;
+            if(winner === 'blue') state.scores.blue++;
+            else if(winner === 'red') state.scores.red++;
+            
+            // Fin de Partida
+            if(state.scores.blue >= CONFIG.winScore || state.scores.red >= CONFIG.winScore) {
+                setTimeout(() => {
+                    if(conn) conn.send({type: 'gameover', winner: winner});
+                    showGameOver(winner === 'blue' ? 'EQUIPO AZUL' : 'EQUIPO ROJO');
+                }, 1000);
+            } else {
+                state.round++;
+                setTimeout(startRound, 3000); // 3 seg para siguiente ronda
+            }
+        }
+
+        // === LÓGICA DEL CLIENTE ===
+        function startGameClient() {
+            loopClient();
+            conn.on('data', data => {
+                if(data.type === 'state') {
+                    clientState = data.payload;
+                } else if (data.type === 'gameover') {
+                    showGameOver(data.winner === 'red' ? 'EQUIPO ROJO' : 'EQUIPO AZUL');
+                }
             });
         }
 
         function loopClient() {
-            // Cliente solo manda inputs
+            if(clientState) {
+                render(clientState, 1);
+                updateHUD(clientState, 1);
+            }
+            
+            // Enviar Inputs
+            let rect = canvas.getBoundingClientRect();
+            let mouseAngle = Math.atan2(input.mouse.y - (clientState?.players[1]?.y || 0), input.mouse.x - (clientState?.players[1]?.x || 0));
+
             if(conn && conn.open) {
-                conn.send({t:'i', p:{
-                    k: localInput.k, 
-                    m: {a: Math.atan2(localInput.m.y, localInput.m.x), d: localInput.m.d},
-                    w: localInput.w
-                }});
+                conn.send({
+                    type: 'input',
+                    payload: {
+                        keys: input.keys,
+                        mouse: { x: input.mouse.x, y: input.mouse.y, angle: mouseAngle, down: input.mouse.down },
+                        weapon: input.weapon
+                    }
+                });
             }
             requestAnimationFrame(loopClient);
         }
 
-        // === RENDERIZADO ===
-        function draw() {
+        // === RENDERIZADO (COMÚN) ===
+        function render(st, myId) {
             // Fondo
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0,0,canvas.width,canvas.height);
-
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
             // Paredes
-            ctx.fillStyle = '#444';
-            gameState.walls.forEach(w => ctx.fillRect(w.x,w.y,w.w,w.h));
-
-            // Jugadores
-            gameState.players.forEach(p => {
-                if(!p.alive) return;
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.ang);
-                ctx.fillStyle = p.team === 'b' ? '#4facfe' : '#ff5858';
-                ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.fillRect(5,-2,15,4); // Arma
-                ctx.restore();
+            ctx.fillStyle = '#555';
+            st.walls.forEach(w => {
+                ctx.fillRect(w.x, w.y, w.w, w.h);
+                ctx.strokeStyle = '#000';
+                ctx.strokeRect(w.x, w.y, w.w, w.h);
             });
 
             // Balas
             ctx.fillStyle = '#ff0';
-            gameState.bullets.forEach(b => {
-                ctx.beginPath(); ctx.arc(b.x,b.y,3,0,Math.PI*2); ctx.fill();
+            st.bullets.forEach(b => {
+                ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI*2); ctx.fill();
             });
 
-            // LUZ (Transparente)
-            let me = isHost ? gameState.players[0] : clientPlayer;
-            if(me && me.alive) {
+            // Jugadores
+            st.players.forEach(p => {
+                if(!p.alive) {
+                    // Cadáver
+                    ctx.fillStyle = '#330000';
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
+                    return;
+                }
+
                 ctx.save();
-                // 1. Oscuridad
-                ctx.fillStyle = 'rgba(0,0,0,0.95)';
-                ctx.fillRect(0,0,canvas.width,canvas.height);
-                // 2. Recorte (Luz)
-                ctx.globalCompositeOperation = 'destination-out';
-                let g = ctx.createRadialGradient(me.x, me.y, 20, me.x, me.y, 400);
-                g.addColorStop(0, 'rgba(255,255,255,1)');
-                g.addColorStop(1, 'rgba(255,255,255,0)');
-                ctx.fillStyle = g;
-                ctx.beginPath(); ctx.moveTo(me.x, me.y);
-                ctx.arc(me.x, me.y, 400, me.ang - 0.5, me.ang + 0.5);
-                ctx.lineTo(me.x, me.y);
-                ctx.fill();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                
+                // Color Equipo
+                ctx.fillStyle = p.team === 'blue' ? '#5bc0de' : '#d9534f';
+                // Indicador "YO"
+                if(p.id === myId) ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                
+                // Cuerpo
+                ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI*2); ctx.fill();
+                if(p.id === myId) ctx.stroke();
+
+                // Arma
+                ctx.fillStyle = '#eee';
+                ctx.fillRect(5, -2, 20, 4); 
+
                 ctx.restore();
+            });
+        }
+
+        function updateHUD(st, myId) {
+            document.getElementById('score-b').innerText = st.scores.blue;
+            document.getElementById('score-r').innerText = st.scores.red;
+            document.getElementById('round-display').innerText = `RONDA ${st.round} / ${CONFIG.winScore}`;
+            
+            let m = Math.floor(st.timer/60);
+            let s = st.timer%60;
+            document.getElementById('timer').innerText = `${m}:${s<10?'0'+s:s}`;
+
+            let me = st.players[myId];
+            if(me) {
+                let w = WEAPONS[me.weapon];
+                document.getElementById('w-name').innerText = w.name;
+                document.getElementById('w-ammo').innerText = w.ammo === -1 ? '∞' : me.ammo;
             }
         }
 
-        function updateHUD() {
-            document.getElementById('score-blue').innerText = gameState.score.b;
-            document.getElementById('score-red').innerText = gameState.score.r;
-            let m = Math.floor(gameState.timer/60);
-            let s = gameState.timer%60;
-            document.getElementById('timer').innerText = `${m}:${s<10?'0'+s:s}`;
+        function showGameOver(txt) {
+            document.getElementById('game-over').classList.remove('hidden');
+            document.getElementById('winner-msg').innerText = txt + " GANA";
         }
 
-        // === INPUTS ===
+        // === INPUT LISTENERS ===
         window.addEventListener('keydown', e => {
-            localInput.k[e.key.toLowerCase()] = true;
-            if(e.key === '1') localInput.w = 0;
-            if(e.key === '2') localInput.w = 1;
+            let k = e.key.toLowerCase();
+            if(k in input.keys) input.keys[k] = 1;
+            if(k === 'shift') input.keys.shift = 1;
+            if(k === '1') input.weapon = 0;
+            if(k === '2') input.weapon = 1;
+            if(k === '3') input.weapon = 2;
         });
-        window.addEventListener('keyup', e => localInput.k[e.key.toLowerCase()] = false);
-        canvas.addEventListener('mousemove', e => {
+        window.addEventListener('keyup', e => {
+            let k = e.key.toLowerCase();
+            if(k in input.keys) input.keys[k] = 0;
+            if(k === 'shift') input.keys.shift = 0;
+        });
+        window.addEventListener('mousemove', e => {
             let r = canvas.getBoundingClientRect();
-            localInput.m.x = e.clientX - r.left;
-            localInput.m.y = e.clientY - r.top;
+            input.mouse.x = e.clientX - r.left;
+            input.mouse.y = e.clientY - r.top;
         });
-        canvas.addEventListener('mousedown', () => localInput.m.d = true);
-        canvas.addEventListener('mouseup', () => localInput.m.d = false);
+        window.addEventListener('mousedown', () => input.mouse.down = 1);
+        window.addEventListener('mouseup', () => input.mouse.down = 0);
 
     </script>
 </body>
